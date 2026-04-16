@@ -25,3 +25,7 @@ dist
 logs
 *.log
 npm-debug.log*
+
+# Cloudflare
+.wrangler
+worker-configuration.d.ts
