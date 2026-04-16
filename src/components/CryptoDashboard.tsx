@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useFavorites, useAddFavorite, useRemoveFavorite } from "./FavoritesSection";
 
 interface Coin {
   id: string;
@@ -298,6 +299,27 @@ export default function CryptoDashboard() {
   const selectedData = coins.find((c) => c.id === selectedCoin);
   const lastUpdated = dataUpdatedAt ? new Date(dataUpdatedAt) : null;
 
+  // Favorites hooks
+  const { data: favorites = [] } = useFavorites();
+  const addFavoriteMutation = useAddFavorite();
+  const removeFavoriteMutation = useRemoveFavorite();
+
+  const favoriteIds = new Set(favorites.map((f) => f.coin_id));
+
+  function toggleFavorite(coin: Coin, e: React.MouseEvent) {
+    e.stopPropagation();
+    if (favoriteIds.has(coin.id)) {
+      removeFavoriteMutation.mutate(coin.id);
+    } else {
+      addFavoriteMutation.mutate({
+        coin_id: coin.id,
+        coin_name: coin.name,
+        coin_symbol: coin.symbol,
+        coin_image: coin.image,
+      });
+    }
+  }
+
   return (
     <div className="w-full max-w-6xl mx-auto">
       {/* Header controls */}
@@ -428,6 +450,7 @@ export default function CryptoDashboard() {
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-300 text-left">
+                <th className="px-2 py-3 font-medium w-10"></th>
                 <th
                   className="px-4 py-3 font-medium cursor-pointer hover:text-gray-900 dark:hover:text-white whitespace-nowrap"
                   onClick={() => handleSort("market_cap_rank")}
@@ -477,7 +500,7 @@ export default function CryptoDashboard() {
                       key={i}
                       className="border-t border-gray-100 dark:border-gray-800 animate-pulse"
                     >
-                      <td className="px-4 py-4" colSpan={8}>
+                      <td className="px-4 py-4" colSpan={9}>
                         <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-full" />
                       </td>
                     </tr>
@@ -496,6 +519,32 @@ export default function CryptoDashboard() {
                           : "hover:bg-gray-50 dark:hover:bg-gray-800/50"
                       }`}
                     >
+                      <td className="px-2 py-3">
+                        <button
+                          onClick={(e) => toggleFavorite(coin, e)}
+                          className={`p-1 rounded-full transition-colors ${
+                            favoriteIds.has(coin.id)
+                              ? "text-yellow-500 hover:text-yellow-600"
+                              : "text-gray-300 hover:text-yellow-500 dark:text-gray-600 dark:hover:text-yellow-500"
+                          }`}
+                          title={favoriteIds.has(coin.id) ? "Remove from favorites" : "Add to favorites"}
+                        >
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 24 24"
+                            fill={favoriteIds.has(coin.id) ? "currentColor" : "none"}
+                            stroke="currentColor"
+                            strokeWidth={favoriteIds.has(coin.id) ? 0 : 2}
+                            className="w-5 h-5"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z"
+                            />
+                          </svg>
+                        </button>
+                      </td>
                       <td className="px-4 py-3 text-gray-500 dark:text-gray-400 font-mono">
                         {coin.market_cap_rank}
                       </td>
