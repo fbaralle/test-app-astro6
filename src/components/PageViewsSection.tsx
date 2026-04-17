@@ -1,7 +1,7 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useEffect, useRef } from "react";
 
-const basePath = import.meta.env.PUBLIC_BASE_PATH || '';
+const basePath = import.meta.env.PUBLIC_API_MOUNT_PATH || "";
 
 interface PageViewsData {
   totalViews: number;
