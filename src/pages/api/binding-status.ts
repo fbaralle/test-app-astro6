@@ -16,9 +16,19 @@ interface HealthcheckResponse {
     kv_flags: ServiceStatus;
     r2: ServiceStatus;
   };
+  debug?: {
+    envKeys: string[];
+    hasDB: boolean;
+    hasSessions: boolean;
+    hasFlags: boolean;
+    hasMedia: boolean;
+  };
 }
 
-async function checkD1(db: D1Database): Promise<ServiceStatus> {
+async function checkD1(db: D1Database | null): Promise<ServiceStatus> {
+  if (!db) {
+    return { status: "error", latency: 0, error: "D1 binding not available" };
+  }
   const start = performance.now();
   try {
     await db.prepare("SELECT 1").first();
@@ -32,7 +42,10 @@ async function checkD1(db: D1Database): Promise<ServiceStatus> {
   }
 }
 
-async function checkKV(kv: KVNamespace): Promise<ServiceStatus> {
+async function checkKV(kv: KVNamespace | null, name: string): Promise<ServiceStatus> {
+  if (!kv) {
+    return { status: "error", latency: 0, error: `KV binding '${name}' not available` };
+  }
   const start = performance.now();
   try {
     await kv.get("__healthcheck__");
@@ -46,7 +59,10 @@ async function checkKV(kv: KVNamespace): Promise<ServiceStatus> {
   }
 }
 
-async function checkR2(r2: R2Bucket): Promise<ServiceStatus> {
+async function checkR2(r2: R2Bucket | null): Promise<ServiceStatus> {
+  if (!r2) {
+    return { status: "error", latency: 0, error: "R2 binding not available" };
+  }
   const start = performance.now();
   try {
     await r2.head("__healthcheck__");
@@ -61,11 +77,20 @@ async function checkR2(r2: R2Bucket): Promise<ServiceStatus> {
 }
 
 export const GET: APIRoute = async () => {
+  // Debug info about what's available
+  const debug = {
+    envKeys: Object.keys(env || {}),
+    hasDB: !!env?.DB,
+    hasSessions: !!env?.SESSIONS,
+    hasFlags: !!env?.FLAGS,
+    hasMedia: !!env?.MEDIA,
+  };
+
   const [d1, kv_sessions, kv_flags, r2] = await Promise.all([
-    checkD1(env.DB),
-    checkKV(env.SESSIONS),
-    checkKV(env.FLAGS),
-    checkR2(env.MEDIA),
+    checkD1(env?.DB || null),
+    checkKV(env?.SESSIONS || null, "SESSIONS"),
+    checkKV(env?.FLAGS || null, "FLAGS"),
+    checkR2(env?.MEDIA || null),
   ]);
 
   const services = { d1, kv_sessions, kv_flags, r2 };
@@ -80,6 +105,7 @@ export const GET: APIRoute = async () => {
     status,
     timestamp: new Date().toISOString(),
     services,
+    debug,
   };
 
   return new Response(JSON.stringify(response), {
